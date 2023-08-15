@@ -6,6 +6,7 @@ require('dotenv').config();
 const User = require('./models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 const bycryptSalt = bcrypt.genSaltSync(10);
 
@@ -14,6 +15,7 @@ app.use(cors({
     origin: 'http://localhost:5173',
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 
 
@@ -22,6 +24,41 @@ mongoose.connect(process.env.LOCAL_URL);
 
 app.get('/', (req, res) => {
     res.send('Welcome to aircnc');
+})
+
+// verify the token to obtain the data
+const userVerification = (req, res, next) => {
+    const token = req.cookies.token;
+
+    if (!token) {
+        // Allow unauthenticated access to certain routes
+        if (req.path === '/profile') {
+            req.userInfo = null; // Set userInfo to null for unauthenticated users
+            return res.json(req.userInfo);
+        }
+        return res.status(401).json({ message: 'unauthorized access' });
+    }
+    jwt.verify(token, process.env.SECRET_KEY, async (err, data) => {
+        if (err) {
+            return res.status(401).json({ message: 'unauthorized access' });
+        } else {
+            const { name, email, _id } = await User.findById(data.id);
+            req.userInfo = { name, email, _id };
+            return next();
+        }
+    })
+}
+
+// get the user data from jwt 
+// useful when refresh the page (to fetch again)
+
+app.get('/profile', userVerification, (req, res) => {
+    // Check if user is authenticated before returning the profile
+    if (req.userInfo) {
+        return res.json({ ...req.userInfo }); // name, email, _id
+    } else {
+        return res.status(401).json({ message: 'unauthorized access' });
+    }
 })
 
 app.post('/register', async (req, res) => {
@@ -62,6 +99,13 @@ app.post('/login', async (req, res) => {
     } catch (error) {
         console.error(error);
     }
+})
+
+app.post('/logout', (req, res) => {
+    return res
+        .clearCookie("token")
+        .status(200)
+        .json({ message: "Successfully logged out 😏 🍀" });
 })
 
 app.listen(5000);

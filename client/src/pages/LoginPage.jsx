@@ -1,11 +1,13 @@
 import axios from "axios";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserContext } from "../Provider/UserContextProvider";
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [user, setUser] = useState('');
+    const {setUser} = useContext(UserContext);
+    const navigate = useNavigate();
 
     async function handleLogin(e) {
         e.preventDefault();
@@ -19,6 +21,7 @@ const LoginPage = () => {
                 setUser(userDoc);
                 console.log(userDoc);
                 alert(message);
+                navigate('/');
             } else {
                 alert(message);
             }
